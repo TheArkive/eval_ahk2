@@ -42,11 +42,16 @@
 ; msgbox eval("~( ( (0 || 1) ? 44 : 55 ) * 7 )") "`n"
            ; . ~( ( (0 || 1) ? 44 : 55 ) * 7 )
 
+; msgbox eval("(100 == 4 || 100 == 5)",true)
+; msgbox eval(" (2560 <= 0x0603) ",true) " / " eval("(2560 <= 0x0603)")
 
 ; ======================================================================================
 ; ======================================================================================
 
 eval(e,test:=false) { ; extend support for parenthesis
+    
+    e := RegExReplace(e,"(!|~)[ \t]+","$1")
+    
     If (test And e = "")
         return false
     Else If (test) {
@@ -95,13 +100,15 @@ _eval(e) { ; support function for pure math expression without parenthesis
     If IsNumber(e)
         return e
     
+    ; dbg("important e 1: " e)
+    
     If RegExMatch(e,"i)(^[^\d!~\-\x28 ]|! |~ |[g-wyz]+|['\" . '"\$@#%\{\}\[\]\\,;\``_])',&m) ; check for invalid characters, non-numbers, invalid punctuation, etc.
         throw Error("Syntax error.`r`n     Reason: " Chr(34) m[1] Chr(34),,"Not a math expression.")
     
     Static _n   := "(?:\d+\.\d+(?:e\+\d+|e\-\d+|e\d+)?|0x[\dA-F]+|\d+)"  ; Regex to identify float/scientific notation, then hex, then base-10 numbers.  Only positive.
     Static _num := "([!~\-]*" _n ")"                                   ; Expand number definition to include - / ~ / !
     Static _ops := "(?:\*\*|\*|//|/|\+|\-|>>>|<<|>>|&&|&|\^|"            ; Define list of operators, in order of prescedence.
-                 . "\|\|" . "|" . "\|" . "|" . ">|<|>=|<=|!=|==|=|\?|:)"
+                 . "\|\|" . "|" . "\|" . "|" . ">=|<=|>|<|!=|==|=|\?|:)"
     
     new_e := "", p := 1, prev_m := ""
     typ := "number", expr := _num           ; Start looking for a number first.
@@ -226,9 +233,9 @@ _eval(e) { ; support function for pure math expression without parenthesis
                     Switch op {
                         Case "*/":  op_reg := "\*|//|/"
                         Case "+-":  op_reg := "\+|\-"
-                        Case "<>":  op_reg := "<<|>>|>>>"
+                        Case "<>":  op_reg := ">>>|<<|>>"
                         Case "&^|": op_reg := "\&|\^|\|"
-                        Case ">=":  op_reg := ">|<|>=|<="
+                        Case ">=":  op_reg := ">\=|<\=|>|<"
                         Case "==":  op_reg := "!=|==|="
                         Case "&&":  op_reg := "&&" . "|" . "\|\|" ; && then ||
                         Case "?:":
@@ -243,6 +250,8 @@ _eval(e) { ; support function for pure math expression without parenthesis
                             e := (expr) ? Trim(res_A) : Trim(res_B)
                             Continue
                     }
+                    
+                    ; dbg("important e 2: " e)
                     
                     While (r := RegExMatch(e,"i)(" n ") +(" op_reg ") +(" n ")",&z)) {
                         o := z[2]
@@ -265,22 +274,24 @@ _eval(e) { ; support function for pure math expression without parenthesis
                         (IsFloat(v1)) ? v1 := Float(v1) : (IsInteger(v1)) ? v1 := Integer(v1) : ""
                         (IsFloat(v2)) ? v2 := Float(v2) : (IsInteger(v2)) ? v2 := Integer(v2) : ""
                         
+                        ; dbg("v1: " v1 " / v2: " v2 " / o: " o)
+                        
                         Switch o {
                             Case "*":   val2 := v1  *  v2
                             Case "//":  val2 := v1 //  v2
                             Case "/":   val2 := v1  /  v2
                             Case "+":   val2 := v1  +  v2
                             Case "-":   val2 := v1  -  v2
+                            Case ">>>": val2 := v1 >>> v2
                             Case "<<":  val2 := v1 <<  v2
                             Case ">>":  val2 := v1 >>  v2
-                            Case ">>>": val2 := v1 >>> v2
                             Case "&":   val2 := v1  &  v2
                             Case "^":   val2 := v1  ^  v2
                             Case "|":   val2 := v1  |  v2
-                            Case ">":   val2 := v1  >  v2
-                            Case ">":   val2 := v1  <  v2
                             Case ">=":  val2 := v1 >=  v2
                             Case "<=":  val2 := v1 <=  v2
+                            Case ">":   val2 := v1  >  v2
+                            Case "<":   val2 := v1  <  v2
                             Case "!=":  val2 := v1 !=  v2
                             Case "==":  val2 := v1 ==  v2
                             Case "=":   val2 := v1  =  v2
