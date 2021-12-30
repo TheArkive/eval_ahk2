@@ -45,6 +45,8 @@
 ; msgbox eval("(100 == 4 || 100 == 5)",true)
 ; msgbox eval(" (2560 <= 0x0603) ",true) " / " eval("(2560 <= 0x0603)")
 
+; msgbox eval("0x10")
+
 ; ======================================================================================
 ; ======================================================================================
 
@@ -93,7 +95,10 @@ eval(e,test:=false) { ; extend support for parenthesis
     }
     
     e := _eval(e)
-    return e
+    If IsInteger(e)
+        return Integer(e)
+    Else
+        return Float(e)
 }
 
 _eval(e) { ; support function for pure math expression without parenthesis
@@ -320,7 +325,7 @@ _eval(e) { ; support function for pure math expression without parenthesis
         If IsInteger(final)
             return Integer(final)
         Else If IsFloat(final)
-            return final
+            return Float(final)
         Else
             throw Error("fix this type: " Type(final)) ; this isn't supposed to be here, but just in case there's some weird type conflict, please tell me and post example.
     } Else {
