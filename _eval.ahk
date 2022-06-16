@@ -45,42 +45,47 @@
 ; msgbox eval("(100 == 4 || 100 == 5)",true)
 ; msgbox eval(" (2560 <= 0x0603) ",true) " / " eval("(2560 <= 0x0603)")
 
-; msgbox eval("0x10")
+; msgbox Float("1.0000000000000001e+300")
+
+; msgbox eval("1.0000000000000001e+300 * 1.0000000000000001e+300")
 
 ; ======================================================================================
 ; ======================================================================================
 
 eval(e,test:=false) { ; extend support for parenthesis
     
+    ; dbg("eval - in: " e)
+    
     e := RegExReplace(e,"(!|~)[ \t]+","$1")
     
-    If (test And e = "")
+    If (test And Trim(e,"`t ") = "")
         return false
     Else If (test) {
         t1 := !RegExMatch(Trim(e),"i)(^[^\d!~\-\x28 ]|! |~ |[g-wyz]+|['\" . '"\$@#%\{\}\[\]\\,;\``_])') ; only return true/false testing "e" as expression
         t2 := ( !InStr(e,"++") && !InStr(e,"--"))
+        t3 := !RegExMatch(e,"i)(?<![a-f\dx])[a-f]")
         
         StrReplace(e,"?","?",,&q) ; count question marks
         StrReplace(e,":",":",,&c) ; count colons
-        t3 := (q=c)
+        t4 := (q=c)
         
-        return (t1 && t2 && t3)
+        return (t1 && t2 && t3 && t4)
     }
     
     If RegExMatch(e,"i)(! |~ |[g-wyz]+|['\" . '"\$@#%\{\}\[\]\\,;\``_])',&m) ; check for invalid characters, non-numbers, invalid punctuation, etc.
-        throw Error("Syntax error.`r`n     Reason: " Chr(34) m[1] Chr(34) "`r`n`r`nExpression: " e,,"Not a math expression.")
+        throw Error("Syntax error.`r`n     Reason: " Chr(34) m[1] Chr(34) "`r`n`r`nExpression: " e,-1,"Not a math expression.")
     
     If ( InStr(e,"++") || InStr(e,"--") )
-        throw Error("Syntax error.`r`n     Reason: -- and ++ are not valid.",,"Not a math expression.")
+        throw Error("Syntax error.`r`n     Reason: -- and ++ are not valid.",-1,"Not a math expression.")
     
     StrReplace(e,"?","?",,&q) ; count question marks
     StrReplace(e,":",":",,&c) ; count colons
     If (q!=c)
-        throw Error("Syntax error.`r`n     Reason: ternary statement must be complete with question mark (?) and colon (:).")
+        throw Error("Syntax error.`r`n     Reason: ternary statement must be complete with question mark (?) and colon (:).",-1)
     
     StrReplace(e,"(","(",,&LP), StrReplace(e,")",")",,&RP)
     If (LP != RP)
-        throw Error("Invalid grouping with parenthesis.  You must ensure the same number of ( and ) exist in the expression.`r`n`r`nExpression:`r`n    " e)
+        throw Error("Invalid grouping with parenthesis.  You must ensure the same number of ( and ) exist in the expression.`r`n`r`nExpression:`r`n    " e,-1)
     
     While RegExMatch(e, "i)(\x28[^\x28\x29]+\x29)", &m) {               ; match phrase surrounded by parenthesis, inner-most first
         
@@ -97,6 +102,8 @@ eval(e,test:=false) { ; extend support for parenthesis
     e := _eval(e)
     If IsInteger(e)
         return Integer(e)
+    Else if (e="inf")
+        throw Error("Number too large.",-1)
     Else
         return Float(e)
 }
@@ -108,7 +115,7 @@ _eval(e) { ; support function for pure math expression without parenthesis
     ; dbg("important e 1: " e)
     
     If RegExMatch(e,"i)(^[^\d!~\-\x28 ]|! |~ |[g-wyz]+|['\" . '"\$@#%\{\}\[\]\\,;\``_])',&m) ; check for invalid characters, non-numbers, invalid punctuation, etc.
-        throw Error("Syntax error.`r`n     Reason: " Chr(34) m[1] Chr(34),,"Not a math expression.")
+        throw Error("Syntax error.`r`n     Reason: " Chr(34) m[1] Chr(34),-1,"Not a math expression.")
     
     Static _n   := "(?:\d+\.\d+(?:e\+\d+|e\-\d+|e\d+)?|0x[\dA-F]+|\d+)"  ; Regex to identify float/scientific notation, then hex, then base-10 numbers.  Only positive.
     Static _num := "([!~\-]*" _n ")"                                   ; Expand number definition to include - / ~ / !
@@ -216,14 +223,14 @@ _eval(e) { ; support function for pure math expression without parenthesis
                         val2 := !v1
                     Else If (_op = "~") {
                         If !IsInteger(v1)
-                            throw Error("Bitwise NOT (~) operator against non-integer value.`r`n     Invalid operation: ~" v1,,"Bitwise operation with non-integer.")
+                            throw Error("Bitwise NOT (~) operator against non-integer value.`r`n     Invalid operation: ~" v1,-1,"Bitwise operation with non-integer.")
                         v1 := Integer(v1)
                         
                         ; dbg("!~: v1: " v1)
                         
                         val2 := ~v1
                     } Else
-                        throw Error("Unexpected error in NOT (! / ~) expression.",,"First char is not ! or ~.`r`n`r`n     Sub-Expression: " _mat)
+                        throw Error("Unexpected error in NOT (! / ~) expression.",-1,"First char is not ! or ~.`r`n`r`n     Sub-Expression: " _mat)
                     
                     ; dbg("!~: val2: " val2)
                     
@@ -268,13 +275,13 @@ _eval(e) { ; support function for pure math expression without parenthesis
                         ; capture operator-specific errors
                         ; =========================================================
                         If (o = "<<" Or o = ">>") And (!IsInteger(v1) Or !IsInteger(v2) Or v2<0) ; check for invalid expressions
-                            throw Error("Invalid expression.`r`n     Expr: " v1 " " o " " v2,,"Bit shift with non-integers.")
+                            throw Error("Invalid expression.`r`n     Expr: " v1 " " o " " v2,-1,"Bit shift with non-integers.")
                         If (o = "/" Or o = "//") And v2=0
-                            throw Error("Invalid expression.`r`n     Expr: " v1 " " o " " v2,,"Divide by zero.")
+                            throw Error("Invalid expression.`r`n     Expr: " v1 " " o " " v2,-1,"Divide by zero.")
                         If (o = "//") And (!IsInteger(v1) Or !IsInteger(v2))
-                            throw Error("Invalid expression.`r`n     Expr: " v1 " " o " " v2,,"Floor division with non-integer divisor.")
+                            throw Error("Invalid expression.`r`n     Expr: " v1 " " o " " v2,-1,"Floor division with non-integer divisor.")
                         If (o = "&" Or o = "^" Or o = "|") And (!IsInteger(v1) Or !IsInteger(v2))
-                            throw Error("Invalid expression.`r`n     Expr: " v1 " " o " " v2,,"Bitwise operation with non-integers.")
+                            throw Error("Invalid expression.`r`n     Expr: " v1 " " o " " v2,-1,"Bitwise operation with non-integers.")
                         
                         (IsFloat(v1)) ? v1 := Float(v1) : (IsInteger(v1)) ? v1 := Integer(v1) : ""
                         (IsFloat(v2)) ? v2 := Float(v2) : (IsInteger(v2)) ? v2 := Integer(v2) : ""
@@ -327,7 +334,7 @@ _eval(e) { ; support function for pure math expression without parenthesis
         Else If IsFloat(final)
             return Float(final)
         Else
-            throw Error("fix this type: " Type(final)) ; this isn't supposed to be here, but just in case there's some weird type conflict, please tell me and post example.
+            throw Error("fix this type: " Type(final),-1) ; this isn't supposed to be here, but just in case there's some weird type conflict, please tell me and post example.
     } Else {
         ; dbg("return: " e)
         return e
