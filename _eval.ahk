@@ -2,8 +2,6 @@
 ; === Examples =========================================================================
 ; ======================================================================================
 
-; msgbox Format("0x{:X}",(0xFF | 0x1))
-
 ; msgbox eval("0 != 0") "`n"
           ; . (0 != 0)
 
@@ -34,20 +32,23 @@
 ; msgbox eval("2 ** -3 * 4 + 5 * 6 // 7 - 8") "`r`n" ; Still simple, but slightly more tricky.
            ; . 2 ** -3 * 4 + 5 * 6 // 7 - 8
 
-; msgbox "testing if math expr: " eval("x86",true) ; first char MUST be a digit / ~ / ! / - or opening parenthesis "("
-
 ; msgbox eval("0 = 5 > 6") "`n"
           ; . (0 = 5 > 6)
 
 ; msgbox eval("~( ( (0 || 1) ? 44 : 55 ) * 7 )") "`n"
            ; . ~( ( (0 || 1) ? 44 : 55 ) * 7 )
 
+; ==========================================
+; testing if input is math expression
+; ==========================================
+
+; msgbox "testing if math expr: " eval("not math!",true) ; first char MUST be a digit, "~", "!", "-", or opening parenthesis "("
+
 ; msgbox eval("(100 == 4 || 100 == 5)",true)
-; msgbox eval(" (2560 <= 0x0603) ",true) " / " eval("(2560 <= 0x0603)")
 
-; msgbox Float("1.0000000000000001e+300")
+; msgbox eval(" (2560 <= 0x0603) ",true)
 
-; msgbox eval("1.0000000000000001e+300 * 1.0000000000000001e+300")
+
 
 ; ======================================================================================
 ; ======================================================================================
