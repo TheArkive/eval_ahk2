@@ -56,8 +56,19 @@
 
 ; msgbox 1.0000000000000001e+600
 
+; ==========================================
+; weird formatting
+; ==========================================
+
+; msgbox (51+.5) '`n' eval('51+.5') ; fix instances of decimal without leading integer
+
 ; ======================================================================================
 ; ======================================================================================
+
+; dbg(_in) {
+    ; Loop Parse _in, "`n", "`r"
+        ; OutputDebug "AHK: " A_LoopField
+; }
 
 ; ======================================================================================
 ; END Example
@@ -82,7 +93,9 @@
 ; Be aware that in the case of using "nothrow", then the string "inf" will be
 ; returned, and it is up to the coder to decide how to handle that.
 ; ======================================================================================
+
 eval(e,test:=false) {
+    
     nothrow := false
     If test="nothrow"
         nothrow := true, test:=false
@@ -120,6 +133,8 @@ eval(e,test:=false) {
     StrReplace(e,"(","(",,&LP), StrReplace(e,")",")",,&RP)
     If (LP != RP)
         throw Error("Invalid grouping with parenthesis.  You must ensure the same number of ( and ) exist in the expression.`r`n`r`nExpression:`r`n    " e,-1)
+    
+    e := RegExReplace(e,'(?<!\d)\.','0.')                               ; fix instances of decimal without leading integer
     
     While RegExMatch(e, "i)(\x28[^\x28\x29]+\x29)", &m) {               ; match phrase surrounded by parenthesis, inner-most first
         ans := _eval(match := m[0])                                     ; match and calculate result
@@ -181,7 +196,7 @@ _eval(e) { ; support function for pure math expression without parenthesis
     Static n := "#?" _n                                         ; Basic number defiintion with # in place - for negative numbers.
     
     For i, op in opers {                                        ; Loop through operators in order of prescedence.
-    
+        
         If e="inf"
             return e
         
@@ -209,11 +224,8 @@ _eval(e) { ; support function for pure math expression without parenthesis
                             o_op := y[1]                         ; Outside operators must be solved last, ie. -2 ** 3 is -(2 ** 3).
                             v1 := y[2]                           ; First operand.
                             v2 := StrReplace(y[4],"#","-")       ; Switch "#" to "-"
-                            
                             v2 := _eval(v2)                      ; Evaluate the exponent (2nd operand), resolve all ! and ~ first.  This behavior is undocumented in AHK v2.
-                            
                             val2 := v1 ** v2                     ; Resolve sub-sub-expression.
-                            
                             new_sub_e := RegExReplace(new_sub_e,"\Q" mat "\E$",o_op val2) ; Ensure this substitution only happens at the end of the sub-expression.
                         }
                         
@@ -221,7 +233,6 @@ _eval(e) { ; support function for pure math expression without parenthesis
                         If (IsObject(y) And InStr(y[1],"-"))
                             val2 := StrReplace(y[1],"-","#") y[2]
                         e := StrReplace(e,sub_e,new_sub_e,,,1)  ; Replace only the first instance of the match.  Maintain "#" sub for "-".
-                        
                         sub_e := "", new_sub_e := ""            ; Reset temp vars / sub-expressions.  
                         p := 1, fail_count := 0                 ; Reset postion tracking and fail_count.  Continue looping for another exponent sub-expression.
                         
@@ -244,7 +255,6 @@ _eval(e) { ; support function for pure math expression without parenthesis
                         If !IsInteger(v1)
                             throw Error("Bitwise NOT (~) operator against non-integer value.`r`n     Invalid operation: ~" v1,-1,"Bitwise operation with non-integer.")
                         v1 := Integer(v1)
-                        
                         val2 := ~v1
                     } Else
                         throw Error("Unexpected error in NOT (! / ~) expression.",-1,"First char is not ! or ~.`r`n`r`n     Sub-Expression: " _mat)
@@ -339,10 +349,3 @@ _eval(e) { ; support function for pure math expression without parenthesis
         return e
     }
 }
-
-
-
-; dbg(_in) {
-    ; Loop Parse _in, "`n", "`r"
-        ; OutputDebug "AHK: " A_LoopField
-; }
